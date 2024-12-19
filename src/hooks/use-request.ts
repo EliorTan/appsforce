@@ -2,25 +2,32 @@ import { useState } from "react";
 import {
   useMutation,
   useQueryClient,
-  UseMutationResult,
   UseMutationOptions,
 } from "@tanstack/react-query";
 import axios, { AxiosError, Method } from "axios";
-
-interface useRequestParams {
+interface ApiResponse<T> {
+    results: T[];
+    info?: {
+      page: number;
+      results: number;
+      seed: string;
+      version: string;
+    };
+}
+interface UseRequestParams<T> {
   url: string;
   method: Method;
-  body?: any;
-  onSuccess?: (value?: any) => void;
+  body?: T;
+  onSuccess?: (value: ApiResponse<T>) => void;
 }
 
 interface RequestError {
   message: string;
 }
 
-interface UseRequestReturnType {
+interface UseRequestReturnType<T> {
   requestErrors: RequestError[] | null;
-  sendRequest: (params: useRequestParams) => Promise<any>;
+  sendRequest: (params: UseRequestParams<T>) => Promise<ApiResponse<T>>;
   isLoading: boolean;
 }
 
@@ -28,16 +35,18 @@ interface AxiosErrorResponse {
   errors: RequestError[];
 }
 
-export default function useRequest(): UseRequestReturnType {
-  const [requestErrors, setRequestErrors] = useState<RequestError[] | null>(
-    null
-  );
+export default function useRequest<T>(): UseRequestReturnType<T> {
+  const [requestErrors, setRequestErrors] = useState<RequestError[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: async ({ url, method, body }: useRequestParams) => {
-      const response = await axios({
+  const mutation = useMutation<
+    ApiResponse<T>,
+    AxiosError<AxiosErrorResponse>,
+    UseRequestParams<T>
+  >({
+    mutationFn: async ({ url, method, body }: UseRequestParams<T>) => {
+      const response = await axios<ApiResponse<T>>({
         url,
         method,
         data: body,
@@ -60,9 +69,11 @@ export default function useRequest(): UseRequestReturnType {
     onSettled: () => {
       setIsLoading(false);
     },
-  } as UseMutationOptions<any, AxiosError<AxiosErrorResponse>, useRequestParams>);
+  });
 
-  const sendRequest = async (params: useRequestParams): Promise<any> => {
+  const sendRequest = async (
+    params: UseRequestParams<T>
+  ): Promise<ApiResponse<T>> => {
     setRequestErrors(null);
     setIsLoading(true);
     const result = await mutation.mutateAsync(params);

@@ -1,5 +1,4 @@
-// components/EditUserModal.tsx
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { User } from "@/types/user";
 import { TextField } from "./ui/text-field";
 import { useForm } from "react-hook-form";

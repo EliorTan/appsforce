@@ -8,12 +8,32 @@ import { SkeletonList } from "./components/ui/skeleton-list";
 import { ErrorMessage } from "./components/ui/error";
 import { AddUserModal } from "./components/add-user-modal";
 import { Navbar } from "./components/navbar";
-
+interface RandomUserResponse {
+  login: { uuid: string };
+  email: string;
+  name: {
+    title: string;
+    first: string;
+    last: string;
+  };
+  picture: {
+    medium: string;
+  };
+  location: {
+    city: string;
+    country: string;
+    street: {
+      name: string;
+      number: number;
+    };
+  };
+}
 export default function Home() {
-  const { sendRequest, isLoading, requestErrors } = useRequest();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { sendRequest, isLoading, requestErrors } =
+    useRequest<RandomUserResponse>();
 
   useEffect(() => {
     const onLoad = async () => {
@@ -21,7 +41,7 @@ export default function Home() {
         url: "https://randomuser.me/api/?results=10",
         method: "GET",
         onSuccess: (response) => {
-          const transformedUsers = response.results.map((user: any) => ({
+          const transformedUsers = response.results.map((user) => ({
             id: user.login.uuid,
             email: user.email,
             name: {
@@ -102,7 +122,6 @@ export default function Home() {
     setUsers(updatedUsers);
     setFilteredUsers(updatedUsers);
   };
-
   if (requestErrors) {
     return <ErrorMessage message={requestErrors[0].message} />;
   }
@@ -121,11 +140,13 @@ export default function Home() {
           </div>
           {isLoading ? <SkeletonList /> : null}
 
-          <UsersList
-            users={filteredUsers}
-            onUpdateUser={handleUpdateUser}
-            onDeleteUser={handleDeleteUser}
-          />
+          {!isLoading && (
+            <UsersList
+              users={filteredUsers}
+              onUpdateUser={handleUpdateUser}
+              onDeleteUser={handleDeleteUser}
+            />
+          )}
 
           <AddUserModal
             isOpen={isAddModalOpen}
