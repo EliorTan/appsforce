@@ -1,101 +1,140 @@
-import Image from "next/image";
+"use client";
+
+import useRequest from "@/hooks/use-request";
+import { User } from "@/types/user";
+import { useEffect, useState } from "react";
+import { UsersList } from "./components/users-list";
+import { SkeletonList } from "./components/ui/skeleton-list";
+import { ErrorMessage } from "./components/ui/error";
+import { AddUserModal } from "./components/add-user-modal";
+import { Navbar } from "./components/navbar";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const { sendRequest, isLoading, requestErrors } = useRequest();
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+  useEffect(() => {
+    const onLoad = async () => {
+      await sendRequest({
+        url: "https://randomuser.me/api/?results=10",
+        method: "GET",
+        onSuccess: (response) => {
+          const transformedUsers = response.results.map((user: any) => ({
+            id: user.login.uuid,
+            email: user.email,
+            name: {
+              title: user.name.title,
+              first: user.name.first,
+              last: user.name.last,
+            },
+            picture: {
+              medium: user.picture.medium,
+            },
+            location: {
+              city: user.location.city,
+              country: user.location.country,
+              street: {
+                name: user.location.street.name,
+                number: user.location.street.number,
+              },
+            },
+          }));
+          setUsers(transformedUsers);
+          setFilteredUsers(transformedUsers);
+        },
+      });
+    };
+
+    onLoad();
+  }, []);
+
+  const handleSearch = (searchTerm: string, filterType: string) => {
+    if (!searchTerm.trim()) {
+      setFilteredUsers(users);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase();
+    const filtered = users.filter((user) => {
+      switch (filterType) {
+        case "name":
+          return (
+            user.name.first.toLowerCase().includes(term) ||
+            user.name.last.toLowerCase().includes(term) ||
+            `${user.name.first} ${user.name.last}`.toLowerCase().includes(term)
+          );
+        case "email":
+          return user.email.toLowerCase().includes(term);
+        case "id":
+          return user.id.toLowerCase().includes(term);
+        case "location":
+          return (
+            user.location.city.toLowerCase().includes(term) ||
+            user.location.country.toLowerCase().includes(term) ||
+            user.location.street.name.toLowerCase().includes(term)
+          );
+        default:
+          return true;
+      }
+    });
+
+    setFilteredUsers(filtered);
+  };
+
+  const handleAddUser = (newUser: User) => {
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    setFilteredUsers(updatedUsers);
+  };
+
+  const handleUpdateUser = (updatedUser: User) => {
+    const updatedUsers = users.map((user) =>
+      user.id === updatedUser.id ? updatedUser : user
+    );
+    setUsers(updatedUsers);
+    setFilteredUsers(updatedUsers);
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    const updatedUsers = users.filter((user) => user.id !== userId);
+    setUsers(updatedUsers);
+    setFilteredUsers(updatedUsers);
+  };
+
+  if (requestErrors) {
+    return <ErrorMessage message={requestErrors[0].message} />;
+  }
+
+  return (
+    <>
+      <div className="min-h-screen bg-gradient-to-b from-slate-800 to-slate-950">
+        <Navbar
+          onAddUser={() => setIsAddModalOpen(true)}
+          onSearch={handleSearch}
+        />
+
+        <main className="container mx-auto px-4 py-8">
+          <div className="mb-6">
+            <h1 className="text-2xl text-white font-bold">User Management</h1>
+          </div>
+          {isLoading ? <SkeletonList /> : null}
+
+          <UsersList
+            users={filteredUsers}
+            onUpdateUser={handleUpdateUser}
+            onDeleteUser={handleDeleteUser}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+
+          <AddUserModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            onAdd={handleAddUser}
+            allUsers={users}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        </main>
+      </div>
+    </>
   );
 }
