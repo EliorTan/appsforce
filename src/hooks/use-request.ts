@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   useMutation,
   useQueryClient,
-  UseMutationOptions,
 } from "@tanstack/react-query";
 import axios, { AxiosError, Method } from "axios";
 interface ApiResponse<T> {

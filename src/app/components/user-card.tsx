@@ -121,7 +121,7 @@ export const UserCard = ({
               <span className="font-semibold">
                 {user.name.first} {user.name.last}
               </span>
-              's account and remove their data from the system.
+              {"'s account and remove their data from the system."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
